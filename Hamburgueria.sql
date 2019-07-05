@@ -1,58 +1,112 @@
-﻿create table cliente
-(cod_cliente int not null primary key,
-nome varchar(60) not null,
-dt_nasc date,
-endereco varchar(60),
-telefone int);
+﻿--- TABELAS ---
 
-create table categoria_cliente
-(cod_cat int not null primary key,
-descricao varchar(60),
-desconto int not null);
+CREATE TABLE CLIENTE
+(COD_CLIENTE INT NOT NULL PRIMARY KEY,
+NOME VARCHAR(60) NOT NULL,
+DT_NASC DATE,
+ENDERECO VARCHAR(60),
+TELEFONE INT);
 
-create table entrega
-(cod_entrega int not null primary key,
-zona varchar(20),
-valor float not null);
+CREATE TABLE CATEGORIA_CLIENTE
+(COD_CAT INT NOT NULL PRIMARY KEY,
+DESCRICAO VARCHAR(60),
+DESCONTO INT NOT NULL);
 
-create table restaurante
-(cod_rest int not null primary key,
-nome varchar(35),
-cnpj varchar(13),
-telefone int not null,
-endereco varchar(40));
+CREATE TABLE ENTREGA
+(COD_ENTREGA INT NOT NULL PRIMARY KEY,
+ZONA VARCHAR(20),
+VALOR FLOAT NOT NULL);
 
-create table prato
-(cod_prato int not null primary key,
-nome varchar(30),
-descricao varchar(60));
+CREATE TABLE RESTAURANTE
+(COD_REST INT NOT NULL PRIMARY KEY,
+NOME VARCHAR(35),
+CNPJ VARCHAR(13),
+TELEFONE INT NOT NULL,
+ENDERECO VARCHAR(40));
 
-create table funcionario
-(cod_func int not null primary key,
-nome varchar(60) not null,
-cpf int not null,
-dt_nasc date,
-telefone int);
+CREATE TABLE PRATO
+(COD_PRATO INT NOT NULL PRIMARY KEY,
+NOME VARCHAR(30),
+DESCRICAO VARCHAR(60));
 
-create table pedido
-(cod_ped int not null primary key,
-cod_func int not null references funcionario(cod_func),
-cod_cliente int not null references cliente(cod_cliente),
-descricao varchar(30),
-data_pedido date,
-valor_total real,
-entrega int not null references entrega(cod_entrega));
+CREATE TABLE FUNCIONARIO
+(COD_FUNC INT NOT NULL PRIMARY KEY,
+NOME VARCHAR(60) NOT NULL,
+CPF INT NOT NULL,
+DT_NASC DATE,
+TELEFONE INT);
 
-create table item_pedido
-(cod_item_pedido int not null primary key,
-cod_ped int not null references pedido(cod_ped),
-cod_rest int not null references restaurante(cod_rest),
-preco real not null,
-quantidade int not null);
+CREATE TABLE PEDIDO
+(COD_PED INT NOT NULL PRIMARY KEY,
+COD_FUNC INT NOT NULL REFERENCES FUNCIONARIO(COD_FUNC),
+COD_CLIENTE INT NOT NULL REFERENCES CLIENTE(COD_CLIENTE),
+DESCRICAO VARCHAR(30),
+DATA_PEDIDO DATE,
+VALOR_TOTAL REAL,
+ENTREGA INT NOT NULL REFERENCES ENTREGA(COD_ENTREGA));
 
-create table estoque
-(cod_rest int not null references restaurante(cod_rest),
-cod_prato int not null references prato(cod_prato),
-quantidade int not null,
-preco real not null,
-constraint p_key primary key(cod_rest, cod_prato));
+CREATE TABLE ITEM_PEDIDO
+(COD_ITEM_PEDIDO INT NOT NULL PRIMARY KEY,
+COD_PED INT NOT NULL REFERENCES PEDIDO(COD_PED),
+COD_REST INT NOT NULL REFERENCES RESTAURANTE(COD_REST),
+PRECO REAL NOT NULL,
+QUANTIDADE INT NOT NULL);
+
+CREATE TABLE ESTOQUE
+(COD_REST INT NOT NULL REFERENCES RESTAURANTE(COD_REST),
+COD_PRATO INT NOT NULL REFERENCES PRATO(COD_PRATO),
+QUANTIDADE INT NOT NULL,
+PRECO REAL NOT NULL,
+CONSTRAINT P_KEY PRIMARY KEY(COD_REST, COD_PRATO));
+
+
+
+--- Inserção ---
+CREATE OR REPLACE FUNCTION INSERIR(NOME_TABELA TEXT, ATRIBUTOS TEXT)
+RETURNS VOID AS $$
+DECLARE
+	QUERY TEXT:= 'INSERT INTO' || NOME_TABELA || 'VALUES('||ATRIBUTOS||');';
+BEGIN
+	IF LOWER(NOME_TABELA)='pedido' THEN
+		RAISE EXCEPTION 'Você não pode criar um pedido com esta função';
+	ELSIF LOWER(NOME_TABELA)='item_pedido' THEN
+		RAISE EXCEPTION 'Você não pode criar um pedido com esta função';
+	END IF;
+	EXECUTE QUERY;
+END;
+
+$$ LANGUAGE 'PLPGSQL';
+
+--- Deletar ---
+CREATE OR REPLACE FUNCTION DELETAR(TABELA TEXT, COLUNA TEXT, VALOR TEXT)
+RETURNS VOID AS $$
+DECLARE
+QUERY TEXT;
+BEGIN
+QUERY:= 'DELETE FROM' || $1 || 'WHERE' || $2 || ' = ''' || $3 ||''');';
+EXECUTE QUERY;
+RAISE INFO 'Registros deletados com sucesso';
+END;
+$$ LANGUAGE 'plpgsql';
+
+----- Triggers -----
+---Checa valores negativos---
+CREATE OR REPLACE FUNCTION CHECK_NEGATIVO() RETURNS TRIGGER AS $$
+BEGIN
+IF (OP = 'INSERT') OR (OP = 'UPDATE') THEN
+	IF NEW.VALOR < 0 THEN
+		RAISE EXCEPTION 'O valor da entrega não pode ser menor que zero';
+	ELSIF NEW.VALOR_TOTAL < 0 THEN
+		RAISE EXCEPTION 'O valor total não pode ser menor que zero';
+	ELSIF NEW.PRECO < 0 THEN
+		RAISE EXCEPTION 'Preço não pode menor que zero';
+	ELSIF NEW.QUANTIDADE < 0 THEN
+		RAISE EXCEPTION 'Quantidade não pode ser menor que zero.';
+	ELSE RETURN NEW;
+	END IF;
+END IF;
+end;
+$$language plpgsql
+
+CREATE TRIGGER CHECK_NEGATIVO BEFORE INSERT OR UPDATE ON CATEGORIA_CLIENTE
+FOR EACH ROW EXECUTE PROCEDURE CHECK_NEGATIVO();
