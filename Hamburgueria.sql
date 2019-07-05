@@ -95,6 +95,16 @@ RAISE INFO 'Registros deletados com sucesso';
 END;
 $$ LANGUAGE 'plpgsql';
 
+--- Dupla inserção (cliente)---
+
+--- Dupla inserção (funcionario) ---
+
+--- Dupla inserção (restaurante) ---
+
+--- Funcionario não pode estar em 2 restaurantes ---
+
+
+
 ----- Triggers -----
 ---Checa valores negativos---
 CREATE OR REPLACE FUNCTION CHECK_NEGATIVO() RETURNS TRIGGER AS $$
@@ -116,3 +126,6 @@ $$language plpgsql
 
 CREATE TRIGGER CHECK_NEGATIVO BEFORE INSERT OR UPDATE ON CATEGORIA_CLIENTE
 FOR EACH ROW EXECUTE PROCEDURE CHECK_NEGATIVO();
+
+--- Teste ---
+select inserir('categoria_cliente', 'default, ''Premium'',10');
